@@ -55,29 +55,48 @@ COMPLETED
 
 ================================================================
 
+COMPLETED (continued)
+---------------------
+
+[4] Fabric notebooks  (committed 68ceb7b on feature/data-model)
+    All 4 notebooks written from scratch:
+
+    notebooks/01_bronze_ingest.ipynb
+      - HubSpot ingestion: API-style with tenacity retry decorator, cursor pagination loop
+      - bearer auth stub + comments showing where production API endpoint replaces file read
+      - Writes bronze_hubspot_marketing_sources, bronze_hubspot_contacts, bronze_hubspot_activities
+      - D365 and Paradigm documented as Copy Jobs (not notebooks)
+
+    notebooks/02_silver_clean.ipynb
+      - Builds silver_student via 3-way LEFT JOIN:
+          D365 spine → HubSpot (contact_id) → Paradigm (LOWER(TRIM(email)))
+      - Casts all types; handles final_grade empty string via CAST(NULLIF(TRIM(...), '') AS INTEGER)
+      - 8 silver tables total: silver_student, silver_enrolment, silver_marketing_source,
+        silver_activity, silver_course, silver_intake, silver_unit, silver_result
+
+    notebooks/03_gold_model.ipynb
+      - Star schema with integer surrogate keys via ROW_NUMBER() OVER (ORDER BY ...)
+      - 4 dims: dim_student, dim_course, dim_intake, dim_marketing_source
+      - 3 facts: fact_lead, fact_enrolment, fact_result
+      - marketing_source_key inherited through dim_student into fact_enrolment
+
+    notebooks/04_data_quality_checks.ipynb
+      - 22 PASS/FAIL checks across Bronze / Silver / Gold
+      - check() + scalar() helpers; raises RuntimeError if any checks fail
+      - RuntimeError triggers pipeline email alert on failure
+
+[5] Reference documentation — architecture.md
+      - Replaced "will be defined" placeholders with actual table names
+      - Added Bronze/Silver/Gold tables to pipeline steps 4 and 5
+      - Updated orchestration diagram to use actual notebook filenames
+      - Identity resolution section now references finalized strategy
+
+================================================================
+
 IN PROGRESS / NEXT
 ------------------
 
-[ ] Bronze ingestion notebooks
-      01a_ingest_hubspot.ipynb   — reads JSON from Files/raw/hubspot/, writes bronze_hubspot_* Delta tables
-      01b_ingest_canvas.ipynb    — (out of scope for now)
-      Copy Jobs for D365 and Paradigm configured in Fabric Data Pipeline
-
-[ ] Silver cleaning notebook
-      02_silver_clean.ipynb
-      - Resolve HubSpot <-> D365 identity via contact_id
-      - Resolve D365 <-> Paradigm identity via case-insensitive email match
-      - Produce silver_student master entity
-
-[ ] Gold modelling notebook
-      03_gold_model.ipynb
-      - Star schema: dim_student, dim_course, dim_intake, dim_marketing_source
-      - Facts: fact_lead, fact_enrolment, fact_result
-
-[ ] Data quality notebook
-      04_data_quality_checks.ipynb
-
-[ ] Power BI semantic model
+[ ] Power BI semantic model  (must be built inside Fabric — cannot do locally)
       - Direct Lake mode on gold_* tables
       - Q1 dashboard: lead-to-enrolment funnel
       - Q2 dashboard: marketing source x academic success
