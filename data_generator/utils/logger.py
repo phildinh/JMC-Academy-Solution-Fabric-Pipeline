@@ -7,7 +7,7 @@ def get_logger(name: str) -> logging.Logger:
         handler = logging.StreamHandler()
         handler.setFormatter(
             logging.Formatter(
-                "%(asctime)s [%(levelname)s] %(name)s — %(message)s",
+                "%(asctime)s [%(levelname)s] %(name)s - %(message)s",
                 datefmt="%H:%M:%S",
             )
         )

@@ -7,7 +7,6 @@ from faker import Faker
 
 from data_generator.utils.config import (
     OUTPUT_BASE_PATH,
-    PARADIGM_D365_COVERAGE_RATE,
     PARADIGM_STUDENT_COUNT,
     RANDOM_SEED,
     RESULT_COUNT,

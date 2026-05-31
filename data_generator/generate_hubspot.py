@@ -8,7 +8,6 @@ from faker import Faker
 from data_generator.utils.config import (
     D365_CONTACT_LINK_RATE,
     D365_STUDENT_COUNT,
-    EMAIL_CASING_MESS_RATE,
     HUBSPOT_ACTIVITY_COUNT,
     HUBSPOT_CONTACT_COUNT,
     OUTPUT_BASE_PATH,
@@ -156,13 +155,13 @@ def _write_output(marketing_sources: list, contacts: list, activities: list) -> 
     out = os.path.join(OUTPUT_BASE_PATH, "hubspot")
     os.makedirs(out, exist_ok=True)
 
-    with open(os.path.join(out, "marketing_sources.json"), "w") as f:
-        json.dump(marketing_sources, f, indent=2)
+    with open(os.path.join(out, "marketing_sources.json"), "w", encoding="utf-8") as f:
+        json.dump(marketing_sources, f, indent=2, ensure_ascii=False)
 
     # Strip internal _* keys before writing
     clean_contacts = [{k: v for k, v in c.items() if not k.startswith("_")} for c in contacts]
-    with open(os.path.join(out, "contacts.json"), "w") as f:
-        json.dump(clean_contacts, f, indent=2)
+    with open(os.path.join(out, "contacts.json"), "w", encoding="utf-8") as f:
+        json.dump(clean_contacts, f, indent=2, ensure_ascii=False)
 
-    with open(os.path.join(out, "activities.json"), "w") as f:
-        json.dump(activities, f, indent=2)
+    with open(os.path.join(out, "activities.json"), "w", encoding="utf-8") as f:
+        json.dump(activities, f, indent=2, ensure_ascii=False)
