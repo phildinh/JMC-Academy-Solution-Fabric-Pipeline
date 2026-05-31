@@ -2,8 +2,6 @@
 
 End-to-end architecture for the JMC student data consolidation demo on Microsoft Fabric.
 
-> **Note:** This document captures the high-level architecture. Specific entities, table schemas, and gold star schema definitions will be added once the data model is finalised in `reference/`.
-
 ---
 
 ## 1. High-Level View
@@ -59,7 +57,7 @@ Three layers, each with a single responsibility. The discipline pays off when so
 
 Each system has its own student identifier. Email is the only stitchable key across all four — and even that is unreliable in the simulated data (typos, case differences). Resolving this is the core job of the silver layer.
 
-Specific ID formats and the master ID resolution strategy will be defined in `reference/data_model_attributes.md`.
+The resolution strategy is documented in `reference/data_model_attributes.md` — Identity Resolution Summary. Short version: D365 is the spine, HubSpot joins via `contact_id` (direct FK), Paradigm joins via `LOWER(TRIM(email))` match (no shared ID exists).
 
 ---
 
@@ -119,10 +117,38 @@ In a production deployment, sources would be ingested directly. Documented as fu
 All bronze tables preserve source fidelity. Ingestion timestamp column added for lineage.
 
 ### Step 4 — Silver
-Cleaning, type casting, deduplication, timezone standardisation, identity resolution across systems. Specific entities to be defined in `reference/data_model_entities.md`.
+Cleaning, type casting, and identity resolution across systems. One master student entity is produced by joining three sources. Eight silver tables:
+
+| Table | Source |
+|---|---|
+| `silver_student` | D365 spine + HubSpot LEFT JOIN (contact_id) + Paradigm LEFT JOIN (email) |
+| `silver_enrolment` | D365 — typed columns, `final_grade` null-coalesced from CSV empty string |
+| `silver_marketing_source` | HubSpot — reference table pass-through |
+| `silver_activity` | HubSpot — typed columns |
+| `silver_course` | D365 — reference table pass-through |
+| `silver_intake` | D365 — typed date columns |
+| `silver_unit` | Paradigm — reference table pass-through |
+| `silver_result` | Paradigm — joined to `silver_student` and `silver_unit` to add `student_number` and `course_code` |
 
 ### Step 5 — Gold
-Star schema built around the business questions in `reference/business_questions.md`. Specific dimensions and facts to be defined alongside the data model.
+Star schema built around the two business questions in `reference/business_questions.md`. Integer surrogate keys on all dimensions for Power BI Direct Lake relationships.
+
+**Dimensions (4):**
+
+| Table | Grain | Key |
+|---|---|---|
+| `dim_student` | One row per student | `student_key` (integer surrogate) |
+| `dim_course` | One row per course | `course_key` (integer surrogate) |
+| `dim_intake` | One row per intake period | `intake_key` (integer surrogate) |
+| `dim_marketing_source` | One row per acquisition channel | `marketing_source_key` (integer surrogate) |
+
+**Facts (3):**
+
+| Table | Grain | Answers |
+|---|---|---|
+| `fact_lead` | One row per HubSpot contact | Q1 — lead funnel, days to enrolment, source attribution |
+| `fact_enrolment` | One row per course enrolment | Q1+Q2 — enrolment volume, completion rate, final grade |
+| `fact_result` | One row per unit result | Q2 — academic performance by unit, grade distribution |
 
 ### Step 6 — Data quality
 Row count sanity, null checks on critical columns, referential integrity, duplicate detection on natural keys.
@@ -149,8 +175,7 @@ A single Fabric Data Pipeline runs the end-to-end flow. The four bronze ingestio
 ```
 ┌─ Copy Job (D365)              ─┐
 ├─ Copy Job (Paradigm)          ─┤
-├─ Notebook 01a_ingest_hubspot  ─┼─▶ All bronze loaded
-└─ Notebook 01b_ingest_canvas   ─┘
+└─ Notebook 01_bronze_ingest    ─┘─▶ All bronze loaded
                 │
                 ▼
         Notebook 02_silver_clean
@@ -159,7 +184,7 @@ A single Fabric Data Pipeline runs the end-to-end flow. The four bronze ingestio
         Notebook 03_gold_model
                 │
                 ▼
-       Notebook 04_data_quality
+    Notebook 04_data_quality_checks
                 │
         ┌───────┴───────┐
         ▼               ▼
