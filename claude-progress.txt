@@ -1,0 +1,87 @@
+JMC Academy — Fabric Medallion Pipeline
+Progress Log
+Last updated: 2026-05-31
+================================================================
+
+COMPLETED
+---------
+
+[1] Repo setup
+    - Resolved duplicate .git issue (nested repo inside outer repo)
+    - Removed inner .git, restructured so all project files sit at repo root
+    - Single .git at JMC-Academy-Solution-Fabric-Pipeline/
+    - Committed restructure and pushed feature/data-model branch to GitHub
+    - Remote: https://github.com/phildinh/JMC-Academy-Solution-Fabric-Pipeline
+
+[2] Reference documentation
+    - reference/business_questions.md   — Q1 (lead-to-enrolment funnel) and Q2 (marketing source x academic success)
+    - reference/data_model_sources.md   — 3 in-scope sources: HubSpot, Dynamics 365, Paradigm
+    - reference/data_model_entities.md  — 10 entities across 3 sources with relationships
+    - reference/data_model_attributes.md — full column-level schema (populated after generator build)
+
+[3] Data generator  (python -m data_generator.main)
+    Built from scratch in data_generator/:
+
+    Files written:
+      data_generator/utils/config.py          — row counts, seed, output paths, linkage rates
+      data_generator/utils/logger.py          — shared logging setup
+      data_generator/utils/fake_helpers.py    — email casing helper (30% uppercase/mixed)
+      data_generator/generate_hubspot.py      — Marketing_Source, Contact, Activity (JSON output)
+      data_generator/generate_dynamics365.py  — Course, Intake, Student, Enrolment (CSV output)
+      data_generator/generate_paradigm.py     — Student, Unit, Result (CSV output)
+      data_generator/main.py                  — orchestrator + summary output
+
+    Output volumes:
+      hubspot/marketing_sources.json      10 rows
+      hubspot/contacts.json             1000 rows
+      hubspot/activities.json           5000 rows
+      dynamics365/courses.csv             20 rows  (real JMC Academy course names)
+      dynamics365/intakes.csv              6 rows  (2023-T1 through 2025-T2)
+      dynamics365/students.csv           300 rows
+      dynamics365/enrolments.csv        1000 rows
+      paradigm/students.csv              250 rows
+      paradigm/units.csv                 100 rows  (5 per course)
+      paradigm/results.csv              1500 rows
+
+    Mess patterns verified:
+      NULL contact_id (walk-ins)       10.0%  (target ~10%)
+      Non-lowercase email casing       29-32% per system  (target ~30%)
+      Lead-to-student conversion       27.0%  (270 of 1000 contacts became students)
+
+    Cross-system integrity confirmed:
+      - All D365 students with contact_id match a real HubSpot contact (0 orphans)
+      - Base emails match across HubSpot and D365 for linked students (0 mismatches)
+      - All 250 Paradigm students have a matching D365 email (silver resolves via LOWER/TRIM)
+
+================================================================
+
+IN PROGRESS / NEXT
+------------------
+
+[ ] Bronze ingestion notebooks
+      01a_ingest_hubspot.ipynb   — reads JSON from Files/raw/hubspot/, writes bronze_hubspot_* Delta tables
+      01b_ingest_canvas.ipynb    — (out of scope for now)
+      Copy Jobs for D365 and Paradigm configured in Fabric Data Pipeline
+
+[ ] Silver cleaning notebook
+      02_silver_clean.ipynb
+      - Resolve HubSpot <-> D365 identity via contact_id
+      - Resolve D365 <-> Paradigm identity via case-insensitive email match
+      - Produce silver_student master entity
+
+[ ] Gold modelling notebook
+      03_gold_model.ipynb
+      - Star schema: dim_student, dim_course, dim_intake, dim_marketing_source
+      - Facts: fact_lead, fact_enrolment, fact_result
+
+[ ] Data quality notebook
+      04_data_quality_checks.ipynb
+
+[ ] Power BI semantic model
+      - Direct Lake mode on gold_* tables
+      - Q1 dashboard: lead-to-enrolment funnel
+      - Q2 dashboard: marketing source x academic success
+
+[ ] README + Loom demo video  (reserved for Sunday evening)
+
+================================================================
